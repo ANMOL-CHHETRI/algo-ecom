@@ -1,0 +1,352 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { MapPin, Phone, CreditCard, ShieldCheck, ArrowRight, Truck } from 'lucide-react';
+import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../hooks/useAuth';
+import api from '../services/api';
+import { RoadNode, PaymentMethod, formatNPR } from '../types';
+import { DeliveryMap } from '../components/DeliveryMap';
+import { PaymentModal } from '../components/PaymentModal';
+
+const CheckoutSchema = z.object({
+  fullName: z.string().min(2, 'Name is required'),
+  phone: z
+    .string()
+    .regex(/^(\+977-?)?9[78]\d{8}$/, 'Must be a valid Nepalese phone number (+977-98XXXXXXXX or 97XXXXXXXX)'),
+  address: z.string().min(5, 'Delivery address description is required'),
+});
+
+type CheckoutFormData = z.infer<typeof CheckoutSchema>;
+
+export const CheckoutPage: React.FC = () => {
+  const { user } = useAuth();
+  const { items, subtotal, deliveryCharge, total, clearCart } = useCart();
+  const navigate = useNavigate();
+
+  const [selectedNode, setSelectedNode] = useState<RoadNode | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CheckoutFormData>({
+    resolver: zodResolver(CheckoutSchema),
+    defaultValues: {
+      fullName: user?.name || '',
+      phone: user?.phone || '9801234567',
+      address: user?.address || 'Near Ward Office, Butwal Sub-Metropolitan, Rupandehi',
+    },
+  });
+
+  const onFormSubmit = async (formData: CheckoutFormData) => {
+    if (!selectedNode) {
+      setErrorMsg('Please select your delivery drop-off landmark on the Butwal Map.');
+      return;
+    }
+
+    if (paymentMethod !== 'COD') {
+      // Trigger mock wallet modal
+      setIsPaymentModalOpen(true);
+      return;
+    }
+
+    await placeOrder(formData, 'COD');
+  };
+
+  const placeOrder = async (
+    formData: CheckoutFormData,
+    method: PaymentMethod
+  ) => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const payload = {
+        deliveryAddress: `${formData.address} [Near ${selectedNode?.name}]`,
+        deliveryPhone: formData.phone,
+        paymentMethod: method,
+        roadNodeId: selectedNode?.id,
+        latitude: selectedNode?.latitude,
+        longitude: selectedNode?.longitude,
+      };
+
+      const res = await api.post('/orders', payload);
+      if (res.data.success) {
+        navigate(`/orders/${res.data.order.id}`);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || err.message || 'Failed to place order');
+    } finally {
+      setIsSubmitting(false);
+      setIsPaymentModalOpen(false);
+    }
+  };
+
+  const handleWalletSuccess = async (method: PaymentMethod) => {
+    // Collect form data directly and place order
+    handleSubmit((data) => placeOrder(data, method))();
+  };
+
+  if (items.length === 0) {
+    navigate('/cart');
+    return null;
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div>
+        <h1 className="text-2xl font-extrabold text-gray-900">Checkout & Order Placement</h1>
+        <p className="text-xs text-gray-500">
+          Pinpoint your delivery drop-off node on the Butwal road graph for route optimization.
+        </p>
+      </div>
+
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-4 rounded-xl flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="font-bold underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onFormSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Delivery details & Map */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Contact & Address Card */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+              <Phone className="w-4 h-4 text-orange-600" />
+              <span>Customer Contact & Delivery Address</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block text-gray-700 font-semibold mb-1">Full Name</label>
+                <input
+                  type="text"
+                  {...register('fullName')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-1 focus:ring-orange-500"
+                />
+                {errors.fullName && (
+                  <p className="text-red-500 text-[10px] mt-1">{errors.fullName.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-semibold mb-1">
+                  Nepalese Phone Number (+977)
+                </label>
+                <input
+                  type="text"
+                  {...register('phone')}
+                  placeholder="+977-98XXXXXXXX"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-1 focus:ring-orange-500"
+                />
+                {errors.phone && (
+                  <p className="text-red-500 text-[10px] mt-1">{errors.phone.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="text-xs">
+              <label className="block text-gray-700 font-semibold mb-1">
+                Detailed Street Address / House / Landmark
+              </label>
+              <textarea
+                rows={2}
+                {...register('address')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-1 focus:ring-orange-500"
+              />
+              {errors.address && (
+                <p className="text-red-500 text-[10px] mt-1">{errors.address.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Interactive Butwal Map for Node Selection */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+                <MapPin className="w-4 h-4 text-orange-600" />
+                <span>Select Delivery Drop-Off Intersection (Butwal Graph)</span>
+              </h3>
+              {selectedNode && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Selected: {selectedNode.name}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              Click any of the 10 real Butwal landmarks below or click on the Leaflet map to map your order:
+            </p>
+
+            <DeliveryMap
+              selectedNodeId={selectedNode?.id}
+              onSelectNode={(node) => setSelectedNode(node)}
+              className="h-80"
+            />
+          </div>
+
+          {/* Payment Method Selector */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+              <CreditCard className="w-4 h-4 text-orange-600" />
+              <span>Payment Method</span>
+            </h3>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <label
+                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                  paymentMethod === 'COD'
+                    ? 'border-orange-600 bg-orange-50/50 text-orange-950 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="COD"
+                  checked={paymentMethod === 'COD'}
+                  onChange={() => setPaymentMethod('COD')}
+                  className="sr-only"
+                />
+                <span className="text-lg">💵</span>
+                <span>Cash on Delivery</span>
+                <span className="text-[10px] text-gray-400 font-normal">Default</span>
+              </label>
+
+              <label
+                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                  paymentMethod === 'ESEWA'
+                    ? 'border-emerald-600 bg-emerald-50/50 text-emerald-950 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="ESEWA"
+                  checked={paymentMethod === 'ESEWA'}
+                  onChange={() => setPaymentMethod('ESEWA')}
+                  className="sr-only"
+                />
+                <span className="text-lg">📱</span>
+                <span>eSewa Wallet</span>
+                <span className="text-[10px] text-emerald-600 font-normal">Mock Demo</span>
+              </label>
+
+              <label
+                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                  paymentMethod === 'KHALTI'
+                    ? 'border-purple-600 bg-purple-50/50 text-purple-950 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="KHALTI"
+                  checked={paymentMethod === 'KHALTI'}
+                  onChange={() => setPaymentMethod('KHALTI')}
+                  className="sr-only"
+                />
+                <span className="text-lg">🟣</span>
+                <span>Khalti Wallet</span>
+                <span className="text-[10px] text-purple-600 font-normal">Mock Demo</span>
+              </label>
+
+              <label
+                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                  paymentMethod === 'FONEPAY'
+                    ? 'border-red-600 bg-red-50/50 text-red-950 font-bold'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="FONEPAY"
+                  checked={paymentMethod === 'FONEPAY'}
+                  onChange={() => setPaymentMethod('FONEPAY')}
+                  className="sr-only"
+                />
+                <span className="text-lg">🔴</span>
+                <span>Fonepay QR</span>
+                <span className="text-[10px] text-red-600 font-normal">Mock Demo</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Order Review */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6 h-fit">
+          <h3 className="font-extrabold text-base text-gray-900 pb-3 border-b border-gray-100">
+            Order Review
+          </h3>
+
+          <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 pr-1 text-xs space-y-2">
+            {items.map((item) => (
+              <div key={item.id} className="pt-2 flex justify-between items-center">
+                <div className="min-w-0 flex-1 pr-2">
+                  <p className="font-semibold text-gray-900 truncate">{item.product.name}</p>
+                  <p className="text-[11px] text-gray-500">Qty: {item.quantity}</p>
+                </div>
+                <span className="font-bold text-gray-900 shrink-0">
+                  {formatNPR((item.product.discountPrice ?? item.product.price) * item.quantity)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-gray-100 pt-3 space-y-2 text-xs">
+            <div className="flex justify-between text-gray-600">
+              <span>Items Subtotal</span>
+              <span className="font-semibold">{formatNPR(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span className="flex items-center space-x-1">
+                <Truck className="w-3.5 h-3.5 text-orange-600" />
+                <span>Delivery Charge (Butwal)</span>
+              </span>
+              <span className="font-semibold">{formatNPR(deliveryCharge)}</span>
+            </div>
+            <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
+              <span className="text-sm font-bold text-gray-900">Total Payable</span>
+              <span className="text-xl font-black text-orange-600">{formatNPR(total)}</span>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center space-x-2 disabled:opacity-60"
+          >
+            {isSubmitting ? (
+              <span>Executing Atomic Prisma Transaction...</span>
+            ) : (
+              <>
+                <span>Place Order ({formatNPR(total)})</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Mock Payment Gateway Modal */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onSuccess={handleWalletSuccess}
+        amount={total}
+      />
+    </div>
+  );
+};
