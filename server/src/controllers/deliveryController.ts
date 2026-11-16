@@ -131,23 +131,23 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
       data: {
         batchNumber,
         status: courierId ? 'ASSIGNED' : 'PENDING',
-        courierId: courierId || null,
         totalDistanceKm,
         algorithmLog: {
           totalDistanceKm,
           naiveDistanceKm,
           ...algorithmLog,
         },
+        ...(courierId ? { courier: { connect: { id: courierId } } } : {}),
         deliveries: {
           create: orderIds.map((orderId: string) => ({
-            orderId,
-            courierId: courierId || null,
+            order: { connect: { id: orderId } },
+            ...(courierId ? { courier: { connect: { id: courierId } } } : {}),
             status: 'PENDING',
           })),
         },
         stops: {
           create: stopNodeIds.map((nodeId: string, i: number) => ({
-            roadNodeId: nodeId,
+            roadNode: { connect: { id: nodeId } },
             stopSequence: i,
           })),
         },
@@ -158,10 +158,10 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
       },
     });
 
-    // Update order status to PROCESSING or OUT_FOR_DELIVERY
+    // Update order status to OUT_FOR_DELIVERY
     await prisma.order.updateMany({
       where: { id: { in: orderIds } },
-      data: { orderStatus: 'PROCESSING' },
+      data: { orderStatus: 'OUT_FOR_DELIVERY' },
     });
 
     res.status(201).json({ success: true, batch });
@@ -173,7 +173,14 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
 export const listBatches = async (req: Request, res: Response): Promise<void> => {
   try {
     const isAdmin = req.user!.role === 'ADMIN';
-    const where = isAdmin ? {} : { courierId: req.user!.id };
+    const where = isAdmin
+      ? {}
+      : {
+          OR: [
+            { courierId: req.user!.id },
+            { courierId: null },
+          ],
+        };
 
     const batches = await prisma.deliveryBatch.findMany({
       where,
@@ -260,13 +267,57 @@ export const assignCourier = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+export const getCouriers = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const couriers = await prisma.user.findMany({
+      where: { role: 'COURIER' },
+      select: { id: true, name: true, email: true, phone: true, role: true },
+    });
+    res.json({ success: true, couriers });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 export const completeStop = async (req: Request, res: Response): Promise<void> => {
   try {
     const stop = await prisma.deliveryStop.update({
       where: { id: req.params.stopId },
       data: { isCompleted: true },
     });
-    res.json({ success: true, stop });
+
+    // Also update associated deliveries and orders at this road node
+    const deliveries = await prisma.delivery.findMany({
+      where: { batchId: stop.batchId },
+      include: { order: true },
+    });
+
+    for (const d of deliveries) {
+      if (d.order.roadNodeId === stop.roadNodeId) {
+        await prisma.delivery.update({
+          where: { id: d.id },
+          data: { status: 'DELIVERED' },
+        });
+        await prisma.order.update({
+          where: { id: d.orderId },
+          data: { orderStatus: 'DELIVERED', paymentStatus: 'PAID' },
+        });
+      }
+    }
+
+    // If all stops are completed, mark the batch as COMPLETED
+    const pendingStops = await prisma.deliveryStop.count({
+      where: { batchId: stop.batchId, isCompleted: false },
+    });
+
+    if (pendingStops === 0) {
+      await prisma.deliveryBatch.update({
+        where: { id: stop.batchId },
+        data: { status: 'COMPLETED' },
+      });
+    }
+
+    res.json({ success: true, stop, pendingStops });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

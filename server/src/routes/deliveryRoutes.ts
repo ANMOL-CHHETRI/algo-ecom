@@ -9,6 +9,7 @@ import {
   assignCourier,
   completeStop,
   updateDeliveryStatus,
+  getCouriers,
 } from '../controllers/deliveryController';
 import { authenticateToken } from '../middleware/authMiddleware';
 import { requireRole } from '../middleware/roleGuard';
@@ -18,6 +19,7 @@ router.use(authenticateToken);
 
 router.get('/nodes', getNodes);
 router.get('/edges', getEdges);
+router.get('/couriers', requireRole('ADMIN'), getCouriers);
 router.post('/optimize', requireRole('ADMIN'), optimizeRoute);
 router.post('/batches', requireRole('ADMIN'), createBatch);
 router.get('/batches', requireRole('ADMIN', 'COURIER'), listBatches);

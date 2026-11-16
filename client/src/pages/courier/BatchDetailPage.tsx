@@ -106,15 +106,24 @@ export const BatchDetailPage: React.FC = () => {
         </h3>
 
         <div className="space-y-2.5">
-          {batch.stops?.map((stop, idx) => (
-            <StopCard
-              key={stop.id}
-              stop={stop}
-              index={idx}
-              onComplete={handleCompleteStop}
-              isCompleted={stop.isCompleted}
-            />
-          ))}
+          {batch.stops?.map((stop, idx) => {
+            const stopOrders = (batch.deliveries || [])
+              .filter((d) => d.order && d.order.roadNodeId === stop.roadNodeId)
+              .map((d) => d.order!)
+              .filter(Boolean);
+
+            return (
+              <StopCard
+                key={stop.id}
+                stop={stop}
+                index={idx}
+                onComplete={handleCompleteStop}
+                isCompleted={stop.isCompleted}
+                orders={stopOrders}
+                isDepot={idx === 0}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

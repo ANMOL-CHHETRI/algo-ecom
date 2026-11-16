@@ -243,7 +243,7 @@ export const Navbar: React.FC = () => {
               </Link>
             )}
 
-            {isCourier && (
+            {(isCourier || isAdmin) && (
               <Link
                 to="/courier"
                 className="hidden sm:flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition"

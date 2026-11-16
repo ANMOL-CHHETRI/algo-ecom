@@ -18,26 +18,17 @@ export const AdminDeliveryPage: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [ordersRes, batchesRes, nodesRes] = await Promise.all([
+      const [ordersRes, batchesRes, nodesRes, couriersRes] = await Promise.all([
         api.get('/orders'),
         api.get('/delivery/batches'),
         api.get('/delivery/nodes'),
+        api.get('/delivery/couriers'),
       ]);
 
       if (ordersRes.data.success) setOrders(ordersRes.data.orders);
       if (batchesRes.data.success) setBatches(batchesRes.data.batches);
       if (nodesRes.data.success) setNodes(nodesRes.data.nodes);
-
-      // Create sample courier list or extract
-      setCouriers([
-        {
-          id: 'courier-sample-1',
-          name: 'Ram Bahadur Thapa',
-          email: 'courier@butwalecom.com',
-          phone: '+977-9847123456',
-          role: 'COURIER',
-        },
-      ]);
+      if (couriersRes.data.success) setCouriers(couriersRes.data.couriers);
     } catch (err) {
       console.error('Failed to load delivery batch data', err);
     } finally {
