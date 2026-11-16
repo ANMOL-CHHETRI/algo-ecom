@@ -7,3 +7,17 @@
     @apply bg-gray-50 text-gray-900;
   }
 }
+
+/* Fix Leaflet map stacking context so Leaflet controls and popups NEVER overlap modal dialogs */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane {
+  z-index: 10 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 20 !important;
+}

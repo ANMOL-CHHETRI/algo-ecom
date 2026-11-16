@@ -109,7 +109,7 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
   }
 
   return (
-    <div className={`relative rounded-xl overflow-hidden border border-gray-200 shadow-sm ${className}`}>
+    <div className={`relative z-0 rounded-xl overflow-hidden border border-gray-200 shadow-sm ${className}`}>
       <MapContainer
         center={butwalCenter}
         zoom={14}

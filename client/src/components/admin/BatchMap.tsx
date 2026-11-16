@@ -60,7 +60,7 @@ export const BatchMap: React.FC<BatchMapProps> = ({
     .map((s) => [s.node.latitude, s.node.longitude]);
 
   return (
-    <div className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm relative ${className}`}>
+    <div className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm relative z-0 ${className}`}>
       <MapContainer center={butwalCenter} zoom={14} scrollWheelZoom={false} className="w-full h-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

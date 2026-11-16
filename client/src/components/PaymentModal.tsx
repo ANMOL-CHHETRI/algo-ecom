@@ -104,7 +104,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const theme = getTheme();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className={`${theme.bg} text-white p-4 sm:p-5 relative transition-colors duration-200 shrink-0`}>
