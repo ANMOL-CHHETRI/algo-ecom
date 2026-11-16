@@ -98,14 +98,10 @@ export const Navbar: React.FC = () => {
               Central Depot: Traffic Chowk / Kalikanagar
             </span>
           </div>
-          <div className="flex items-center space-x-3">
-            <Link
-              to="/algo-lab"
-              className="bg-orange-700 hover:bg-orange-800 px-2 py-0.5 rounded text-white font-medium flex items-center space-x-1 transition"
-            >
-              <Cpu className="w-3 h-3" />
-              <span>BCA Algo Lab (Viva Demo)</span>
-            </Link>
+          <div className="flex items-center space-x-3 text-orange-100 text-[11px]">
+            <span>📞 +977-9856012345</span>
+            <span className="hidden sm:inline text-orange-200">|</span>
+            <span className="hidden sm:inline">Currency: NPR (Rs.)</span>
           </div>
         </div>
       </div>
@@ -223,15 +219,6 @@ export const Navbar: React.FC = () => {
 
           {/* Right actions */}
           <div className="flex items-center space-x-4">
-            {/* Algo Lab Viva shortcut */}
-            <Link
-              to="/algo-lab"
-              className="hidden lg:flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold transition"
-            >
-              <Cpu className="w-4 h-4 text-purple-600" />
-              <span>Algo Lab</span>
-            </Link>
-
             {/* Role specific shortcuts */}
             {isAdmin && (
               <Link
