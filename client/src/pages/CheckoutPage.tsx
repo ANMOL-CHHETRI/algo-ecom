@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, Phone, CreditCard, ShieldCheck, ArrowRight, Truck } from 'lucide-react';
+import { MapPin, Phone, CreditCard, ShieldCheck, ArrowRight, Truck, QrCode, Sparkles } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
@@ -36,6 +36,26 @@ export const CheckoutPage: React.FC = () => {
   const codFee = paymentMethod === 'COD' ? 10 : 0;
   const finalDeliveryCharge = deliveryCharge + codFee;
   const finalTotal = subtotal + finalDeliveryCharge;
+
+  // Auto-select central Butwal node as default if not selected
+  useEffect(() => {
+    const loadDefaultNode = async () => {
+      try {
+        const res = await api.get('/delivery/nodes');
+        if (res.data.success && res.data.nodes?.length > 0) {
+          const defaultNode =
+            res.data.nodes.find(
+              (n: RoadNode) =>
+                n.name.includes('Traffic') || n.name.includes('Kalikanagar') || n.name.includes('Golpark')
+            ) || res.data.nodes[0];
+          setSelectedNode((prev) => prev || defaultNode);
+        }
+      } catch (err) {
+        console.error('Failed to pre-load default road node', err);
+      }
+    };
+    loadDefaultNode();
+  }, []);
 
   const {
     register,
@@ -276,6 +296,68 @@ export const CheckoutPage: React.FC = () => {
                 <span className="text-[10px] text-gray-500">Scan Anmol Chhetri's QR code</span>
               </label>
             </div>
+
+            {/* Instant Live QR Display on Page */}
+            {paymentMethod !== 'COD' && (
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-emerald-500/30 p-4 sm:p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <QrCode className="w-5 h-5 text-emerald-600" />
+                    <span className="font-extrabold text-sm text-gray-900">
+                      {paymentMethod === 'ESEWA' ? 'eSewa Direct QR Payment' : 'Khalti Direct QR Payment'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+                    Payable: {formatNPR(finalTotal)}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {/* QR Image with Click to Zoom */}
+                  <div
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="cursor-pointer bg-white p-2 rounded-xl border border-gray-200 shadow hover:shadow-md transition text-center shrink-0 group relative"
+                    title="Click to view full-screen QR"
+                  >
+                    <img
+                      src={paymentMethod === 'ESEWA' ? '/qr/esewa-qr.png' : '/qr/khalti-qr.jpg'}
+                      alt={`${paymentMethod} QR`}
+                      className="w-40 h-40 sm:w-44 sm:h-44 object-contain mx-auto rounded-lg"
+                    />
+                    <span className="text-[10px] text-emerald-700 block mt-1 font-bold group-hover:underline">
+                      🔍 Click to Scan & Verify
+                    </span>
+                  </div>
+
+                  {/* Beneficiary Details */}
+                  <div className="space-y-2 text-xs flex-1 w-full">
+                    <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-1.5 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 text-[11px]">Beneficiary Name:</span>
+                        <strong className="text-gray-900 font-extrabold">Anmol Chhetri</strong>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 text-[11px]">Wallet ID / Mobile:</span>
+                        <strong className="text-gray-900 font-mono font-bold">9748809637</strong>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-gray-100 pt-1.5">
+                        <span className="text-gray-500 text-[11px]">Total Amount:</span>
+                        <strong className="text-orange-600 font-black text-sm">{formatNPR(finalTotal)}</strong>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsPaymentModalOpen(true)}
+                      className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition flex items-center justify-center space-x-1.5"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Open Fullscreen QR & Enter Ref Code</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -331,24 +413,31 @@ export const CheckoutPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center space-x-2 disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <span>Executing Atomic Prisma Transaction...</span>
-            ) : (
-              <>
-                <span>
-                  {paymentMethod === 'COD'
-                    ? `Place Order (${formatNPR(finalTotal)})`
-                    : `Scan QR & Pay (${formatNPR(finalTotal)})`}
-                </span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+          {paymentMethod === 'COD' ? (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center space-x-2 disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <span>Executing Atomic Prisma Transaction...</span>
+              ) : (
+                <>
+                  <span>Place Order ({formatNPR(finalTotal)})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center space-x-2"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Scan QR & Pay ({formatNPR(finalTotal)})</span>
+            </button>
+          )}
         </div>
       </form>
 

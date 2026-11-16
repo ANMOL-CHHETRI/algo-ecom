@@ -24,6 +24,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [txnRef, setTxnRef] = useState('');
   const [copied, setCopied] = useState(false);
 
+  React.useEffect(() => {
+    if (initialMethod && initialMethod !== 'COD') {
+      setMethod(initialMethod);
+    }
+    setStep('QR_SCAN');
+    setIsProcessing(false);
+  }, [initialMethod, isOpen]);
+
   if (!isOpen) return null;
 
   const recipientName = 'Anmol Chhetri';
