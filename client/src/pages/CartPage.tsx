@@ -138,6 +138,10 @@ export const CartPage: React.FC = () => {
               <span className="font-semibold text-gray-900">{formatNPR(deliveryCharge)}</span>
             </div>
 
+            <div className="bg-emerald-50 text-emerald-800 text-[11px] p-2 rounded-lg font-medium border border-emerald-200">
+              💡 <strong>Save Rs. 10:</strong> Pay via eSewa or Khalti QR at checkout to waive the extra COD fee!
+            </div>
+
             <div className="pt-3 border-t border-gray-100 flex justify-between items-baseline">
               <span className="text-sm font-bold text-gray-900">Total Amount</span>
               <span className="text-xl font-black text-orange-600">{formatNPR(total)}</span>

@@ -32,6 +32,11 @@ export const CheckoutPage: React.FC = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Cash on Delivery (COD) requires an extra Rs. 10 handling fee
+  const codFee = paymentMethod === 'COD' ? 10 : 0;
+  const finalDeliveryCharge = deliveryCharge + codFee;
+  const finalTotal = subtotal + finalDeliveryCharge;
+
   const {
     register,
     handleSubmit,
@@ -201,11 +206,11 @@ export const CheckoutPage: React.FC = () => {
               <span>Payment Method</span>
             </h3>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <label
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                className={`p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition text-center ${
                   paymentMethod === 'COD'
-                    ? 'border-orange-600 bg-orange-50/50 text-orange-950 font-bold'
+                    ? 'border-orange-600 bg-orange-50/60 text-orange-950 font-bold shadow-sm'
                     : 'border-gray-200 hover:border-gray-300 text-gray-600'
                 }`}
               >
@@ -217,15 +222,18 @@ export const CheckoutPage: React.FC = () => {
                   onChange={() => setPaymentMethod('COD')}
                   className="sr-only"
                 />
-                <span className="text-lg">💵</span>
-                <span>Cash on Delivery</span>
-                <span className="text-[10px] text-gray-400 font-normal">Default</span>
+                <span className="text-2xl">💵</span>
+                <span className="font-extrabold text-gray-900">Cash on Delivery</span>
+                <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
+                  +Rs. 10 Handling Charge
+                </span>
+                <span className="text-[10px] text-gray-400">Pay cash upon doorstep arrival</span>
               </label>
 
               <label
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                className={`p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition text-center ${
                   paymentMethod === 'ESEWA'
-                    ? 'border-emerald-600 bg-emerald-50/50 text-emerald-950 font-bold'
+                    ? 'border-emerald-600 bg-emerald-50/60 text-emerald-950 font-bold shadow-sm'
                     : 'border-gray-200 hover:border-gray-300 text-gray-600'
                 }`}
               >
@@ -237,15 +245,18 @@ export const CheckoutPage: React.FC = () => {
                   onChange={() => setPaymentMethod('ESEWA')}
                   className="sr-only"
                 />
-                <span className="text-lg">📱</span>
-                <span>eSewa Wallet</span>
-                <span className="text-[10px] text-emerald-600 font-normal">Mock Demo</span>
+                <span className="text-2xl">📱</span>
+                <span className="font-extrabold text-emerald-800">eSewa Direct QR</span>
+                <span className="text-[10px] text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                  Save Rs. 10 (Free COD Fee)
+                </span>
+                <span className="text-[10px] text-gray-500">Scan Anmol Chhetri's QR code</span>
               </label>
 
               <label
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
+                className={`p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition text-center ${
                   paymentMethod === 'KHALTI'
-                    ? 'border-purple-600 bg-purple-50/50 text-purple-950 font-bold'
+                    ? 'border-purple-600 bg-purple-50/60 text-purple-950 font-bold shadow-sm'
                     : 'border-gray-200 hover:border-gray-300 text-gray-600'
                 }`}
               >
@@ -257,29 +268,12 @@ export const CheckoutPage: React.FC = () => {
                   onChange={() => setPaymentMethod('KHALTI')}
                   className="sr-only"
                 />
-                <span className="text-lg">🟣</span>
-                <span>Khalti Wallet</span>
-                <span className="text-[10px] text-purple-600 font-normal">Mock Demo</span>
-              </label>
-
-              <label
-                className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center space-y-1.5 cursor-pointer transition ${
-                  paymentMethod === 'FONEPAY'
-                    ? 'border-red-600 bg-red-50/50 text-red-950 font-bold'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="FONEPAY"
-                  checked={paymentMethod === 'FONEPAY'}
-                  onChange={() => setPaymentMethod('FONEPAY')}
-                  className="sr-only"
-                />
-                <span className="text-lg">🔴</span>
-                <span>Fonepay QR</span>
-                <span className="text-[10px] text-red-600 font-normal">Mock Demo</span>
+                <span className="text-2xl">🟣</span>
+                <span className="font-extrabold text-purple-800">Khalti Direct QR</span>
+                <span className="text-[10px] text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full font-bold">
+                  Save Rs. 10 (Free COD Fee)
+                </span>
+                <span className="text-[10px] text-gray-500">Scan Anmol Chhetri's QR code</span>
               </label>
             </div>
           </div>
@@ -313,13 +307,27 @@ export const CheckoutPage: React.FC = () => {
             <div className="flex justify-between text-gray-600">
               <span className="flex items-center space-x-1">
                 <Truck className="w-3.5 h-3.5 text-orange-600" />
-                <span>Delivery Charge (Butwal)</span>
+                <span>Base Delivery (Butwal Graph)</span>
               </span>
               <span className="font-semibold">{formatNPR(deliveryCharge)}</span>
             </div>
+
+            {/* COD Handling Fee breakdown */}
+            {paymentMethod === 'COD' ? (
+              <div className="flex justify-between text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg font-medium">
+                <span>Cash on Delivery Handling Charge</span>
+                <span className="font-bold">+Rs. 10</span>
+              </div>
+            ) : (
+              <div className="flex justify-between text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg font-medium">
+                <span>Online QR Payment Discount</span>
+                <span className="font-bold">-Rs. 10 (Waived)</span>
+              </div>
+            )}
+
             <div className="flex justify-between items-baseline pt-2 border-t border-gray-100">
               <span className="text-sm font-bold text-gray-900">Total Payable</span>
-              <span className="text-xl font-black text-orange-600">{formatNPR(total)}</span>
+              <span className="text-xl font-black text-orange-600">{formatNPR(finalTotal)}</span>
             </div>
           </div>
 
@@ -332,7 +340,11 @@ export const CheckoutPage: React.FC = () => {
               <span>Executing Atomic Prisma Transaction...</span>
             ) : (
               <>
-                <span>Place Order ({formatNPR(total)})</span>
+                <span>
+                  {paymentMethod === 'COD'
+                    ? `Place Order (${formatNPR(finalTotal)})`
+                    : `Scan QR & Pay (${formatNPR(finalTotal)})`}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -345,7 +357,8 @@ export const CheckoutPage: React.FC = () => {
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         onSuccess={handleWalletSuccess}
-        amount={total}
+        amount={finalTotal}
+        initialMethod={paymentMethod}
       />
     </div>
   );

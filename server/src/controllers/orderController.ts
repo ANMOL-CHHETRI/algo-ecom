@@ -44,13 +44,16 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         0
       );
 
+      // Base delivery is Rs. 50; Cash on Delivery (COD) incurs an extra Rs. 10 handling charge (Rs. 60 total)
+      const deliveryCharge = paymentMethod === 'COD' ? 60 : 50;
+
       // 2. Create order
       const newOrder = await tx.order.create({
         data: {
           orderNumber: generateOrderNumber(),
           customerId: req.user!.id,
           totalAmount,
-          deliveryCharge: 50,
+          deliveryCharge,
           paymentMethod: paymentMethod as any,
           paymentStatus: paymentMethod === 'COD' ? 'PENDING' : 'PAID',
           orderStatus: 'PLACED',
